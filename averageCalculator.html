@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Cube Time Averager</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 20px;
+      background: #f0f0f0;
+    }
+    h1 {
+      margin-bottom: 20px;
+    }
+    .inputs {
+      margin: 15px 0;
+    }
+    input {
+      padding: 8px;
+      margin: 5px;
+      width: 120px;
+      text-align: center;
+    }
+    .big-display {
+      font-size: 2em;
+      margin-top: 20px;
+      font-weight: bold;
+      color: #2b6cb0;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>Cube Time Averager</h1>
+
+  <label for="mode">Choose Mode:</label>
+  <select id="mode" onchange="renderInputs()">
+    <option value="3">Mo3 (Mean of 3)</option>
+    <option value="5">Ao5 (Average of 5)</option>
+  </select>
+
+  <div class="inputs" id="inputs"></div>
+
+  <button onclick="calculateAverage()">Calculate Average</button>
+  <div class="big-display" id="result"></div>
+
+  <button onclick="resetForm()">Enter Another Value</button>
+  
+  <h2>Make sure you type the full time, do not shorten it like </h2><h2 style="color: red">1.23s</h2>
+
+  <script>
+    function renderInputs() {
+      const mode = parseInt(document.getElementById("mode").value);
+      const inputsDiv = document.getElementById("inputs");
+      inputsDiv.innerHTML = "";
+      for (let i = 0; i < mode; i++) {
+        inputsDiv.innerHTML += `<input type="text" id="time${i}" placeholder="mm:ss.xx">`;
+      }
+    }
+
+    function parseTime(str) {
+      const parts = str.split(":");
+      if (parts.length !== 2) return NaN;
+      const minutes = parseInt(parts[0], 10);
+      const seconds = parseFloat(parts[1]);
+      return minutes * 60 + seconds;
+    }
+
+    function formatTime(seconds) {
+      const m = Math.floor(seconds / 60);
+      const s = (seconds % 60).toFixed(2);
+      return `${m}:${s.padStart(5, "0")}`;
+    }
+
+    function calculateAverage() {
+      const mode = parseInt(document.getElementById("mode").value);
+      let times = [];
+      for (let i = 0; i < mode; i++) {
+        const val = document.getElementById("time" + i).value.trim();
+        if (!val) continue;
+        const parsed = parseTime(val);
+        if (isNaN(parsed)) {
+          alert("Invalid format. Use mm:ss.xx");
+          return;
+        }
+        times.push(parsed);
+      }
+      if (times.length !== mode) {
+        alert("Please enter all " + mode + " times.");
+        return;
+      }
+
+      let average;
+      if (mode === 3) {
+        // Simple mean
+        average = times.reduce((a, b) => a + b, 0) / 3;
+      } else if (mode === 5) {
+        // Drop fastest and slowest
+        times.sort((a, b) => a - b);
+        const middle = times.slice(1, 4);
+        average = middle.reduce((a, b) => a + b, 0) / 3;
+      }
+
+      document.getElementById("result").innerText = "Average: " + formatTime(average);
+    }
+
+    function resetForm() {
+      document.getElementById("result").innerText = "";
+      renderInputs();
+    }
+
+    // Initialize default mode
+    renderInputs();
+  </script>
+</body>
+</html>
