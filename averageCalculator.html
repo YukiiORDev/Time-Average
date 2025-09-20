@@ -10,12 +10,9 @@
       padding: 20px;
       background: #f0f0f0;
     }
-    h1 {
-      margin-bottom: 20px;
-    }
-    .inputs {
-      margin: 15px 0;
-    }
+    h1 { margin-bottom: 20px; }
+    .inputs { margin: 15px 0; }
+    
     input {
       padding: 8px;
       margin: 5px;
@@ -29,10 +26,23 @@
       color: #2b6cb0;
     }
     button {
-      margin-top: 20px;
+      margin: 10px;
       padding: 10px 20px;
       font-size: 16px;
       cursor: pointer;
+    }
+    .records {
+      margin-top: 25px;
+      text-align: left;
+      background: #fff;
+      padding: 10px;
+      border-radius: 6px;
+      max-width: 400px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .records h3 {
+      margin-top: 10px;
     }
   </style>
 </head>
@@ -51,72 +61,128 @@
   <div class="big-display" id="result"></div>
 
   <button onclick="resetForm()">Enter Another Value</button>
-  
-  <h2>Make sure you type the full time, do not shorten it like </h2><h2 style="color: red">1.23s</h2>
+  <button onclick="showRecords()">Show Records</button>
+  <button onclick="clearRecords()">Clear Records</button>
+
+  <div id="records" class="records"></div>
+
+  <h2>You can type either</h2>
+  <h2 style="color: red">23.45 or 1:23.45</h2>
 
   <script>
-    function renderInputs() {
-      const mode = parseInt(document.getElementById("mode").value);
-      const inputsDiv = document.getElementById("inputs");
-      inputsDiv.innerHTML = "";
-      for (let i = 0; i < mode; i++) {
-        inputsDiv.innerHTML += `<input type="text" id="time${i}" placeholder="mm:ss.xx">`;
-      }
+  function renderInputs() {
+    const mode = parseInt(document.getElementById("mode").value);
+    const inputsDiv = document.getElementById("inputs");
+    inputsDiv.innerHTML = "";
+    for (let i = 0; i < mode; i++) {
+      inputsDiv.innerHTML += `<input type="text" id="time${i}" placeholder="mm:ss.xx or ss.xx">`;
     }
+  }
 
-    function parseTime(str) {
+  function parseTime(str) {
+    if (str.includes(":")) {
       const parts = str.split(":");
       if (parts.length !== 2) return NaN;
       const minutes = parseInt(parts[0], 10);
       const seconds = parseFloat(parts[1]);
       return minutes * 60 + seconds;
+    } else {
+      return parseFloat(str); // treat as seconds
     }
+  }
 
-    function formatTime(seconds) {
-      const m = Math.floor(seconds / 60);
-      const s = (seconds % 60).toFixed(2);
-      return `${m}:${s.padStart(5, "0")}`;
-    }
+  function formatTime(seconds) {
+    const m = Math.floor(seconds / 60);
+    const s = (seconds % 60).toFixed(2);
+    return `${m}:${s.padStart(5, "0")}`;
+  }
 
-    function calculateAverage() {
-      const mode = parseInt(document.getElementById("mode").value);
-      let times = [];
-      for (let i = 0; i < mode; i++) {
-        const val = document.getElementById("time" + i).value.trim();
-        if (!val) continue;
-        const parsed = parseTime(val);
-        if (isNaN(parsed)) {
-          alert("Invalid format. Use mm:ss.xx");
-          return;
-        }
-        times.push(parsed);
-      }
-      if (times.length !== mode) {
-        alert("Please enter all " + mode + " times.");
+  function calculateAverage() {
+    const mode = parseInt(document.getElementById("mode").value);
+    let times = [];
+    for (let i = 0; i < mode; i++) {
+      const val = document.getElementById("time" + i).value.trim();
+      if (!val) continue;
+      const parsed = parseTime(val);
+      if (isNaN(parsed)) {
+        alert("Invalid format. Use ss.xx or mm:ss.xx");
         return;
       }
-
-      let average;
-      if (mode === 3) {
-        // Simple mean
-        average = times.reduce((a, b) => a + b, 0) / 3;
-      } else if (mode === 5) {
-        // Drop fastest and slowest
-        times.sort((a, b) => a - b);
-        const middle = times.slice(1, 4);
-        average = middle.reduce((a, b) => a + b, 0) / 3;
-      }
-
-      document.getElementById("result").innerText = "Average: " + formatTime(average);
+      times.push(parsed);
+    }
+    if (times.length !== mode) {
+      alert("Please enter all " + mode + " times.");
+      return;
     }
 
-    function resetForm() {
-      document.getElementById("result").innerText = "";
-      renderInputs();
+    let average;
+    if (mode === 3) {
+      average = times.reduce((a, b) => a + b, 0) / 3;
+    } else if (mode === 5) {
+      times.sort((a, b) => a - b);
+      const middle = times.slice(1, 4);
+      average = middle.reduce((a, b) => a + b, 0) / 3;
     }
 
-    // Initialize default mode
+    const avgStr = formatTime(average);
+    document.getElementById("result").innerText = "Average: " + avgStr;
+
+    // Save to localStorage
+    saveRecord(mode === 3 ? "Mo3" : "Ao5", avgStr);
+  }
+
+  function resetForm() {
+    document.getElementById("result").innerText = "";
     renderInputs();
-  </script>
+  }
+
+  function saveRecord(type, value) {
+    let data = JSON.parse(localStorage.getItem("cubeRecords") || "{}");
+    if (!data[type]) data[type] = [];
+    data[type].push(value);
+    localStorage.setItem("cubeRecords", JSON.stringify(data));
+  }
+
+  // --- Toggle for show/hide ---
+  let recordsVisible = false;
+
+  function showRecords() {
+    const container = document.getElementById("records");
+
+    if (recordsVisible) {
+      container.innerHTML = ""; // hide
+      recordsVisible = false;
+      return;
+    }
+
+    let data = JSON.parse(localStorage.getItem("cubeRecords") || "{}");
+    container.innerHTML = "";
+    if (!data.Mo3 && !data.Ao5) {
+      container.innerHTML = "<p>No records stored yet.</p>";
+    } else {
+      if (data.Mo3) {
+        container.innerHTML += "<h3>Mo3 Records</h3><ul>" +
+          data.Mo3.map(r => `<li>${r}</li>`).join("") + "</ul>";
+      }
+      if (data.Ao5) {
+        container.innerHTML += "<h3>Ao5 Records</h3><ul>" +
+          data.Ao5.map(r => `<li>${r}</li>`).join("") + "</ul>";
+      }
+    }
+
+    recordsVisible = true;
+  }
+
+  function clearRecords() {
+    if (confirm("Clear all records?")) {
+      localStorage.removeItem("cubeRecords");
+      document.getElementById("records").innerHTML = "";
+      recordsVisible = false;
+    }
+  }
+
+  // Initialize
+  renderInputs();
+</script>
 </body>
 </html>
